@@ -59,22 +59,10 @@ func processMessage(
 		Str("body", msg.Body).
 		Msg("Got SQS message")
 
-	var body struct {
-		Message string `json:"Message"`
-	}
-
-	if err := json.Unmarshal([]byte(msg.Body), &body); err != nil {
+	content := &types.Content{}
+	if err := json.Unmarshal([]byte(msg.Body), &content); err != nil {
 		log.Error().Err(err).
 			Interface("body", msg.Body).
-			Msg("Failed to unmarshal body json")
-		ch <- err
-		return
-	}
-
-	content := &types.Content{}
-	if err := json.Unmarshal([]byte(body.Message), &content); err != nil {
-		log.Error().Err(err).
-			Interface("content", body.Message).
 			Msg("Failed to unmarshal content json")
 		ch <- err
 		return

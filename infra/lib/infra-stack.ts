@@ -18,7 +18,11 @@ export class ContentModerationInfraStack extends cdk.Stack {
         });
 
         const topic = new sns.Topic(this, "ContentModerationTopic");
-        topic.addSubscription(new SqsSubscription(queue));
+        topic.addSubscription(
+            new SqsSubscription(queue, {
+                rawMessageDelivery: true,
+            })
+        );
 
         const table = new dynamodb.Table(this, "ContentModerationTable", {
             partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
