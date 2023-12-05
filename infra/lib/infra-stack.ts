@@ -34,6 +34,7 @@ export class ContentModerationInfraStack extends cdk.Stack {
             code: lambda.Code.fromAsset("../app/bin/api"),
             environment: {
                 CONTENT_MODERATION_TOPIC_ARN: topic.topicArn,
+                CONTENT_MODERATION_TABLE_NAME: table.tableName,
                 GIN_MODE: "release",
             },
         });
@@ -44,8 +45,11 @@ export class ContentModerationInfraStack extends cdk.Stack {
 
         const lambdaIntegration = new LambdaIntegration(serverLambda);
 
-        const postResource = api.root;
-        postResource.addMethod("POST", lambdaIntegration);
+        const contentResource = api.root.addResource("content");
+        contentResource.addMethod("POST", lambdaIntegration);
+
+        const contentIdResource = contentResource.addResource("{id}");
+        contentIdResource.addMethod("GET", lambdaIntegration);
 
         const sqsConsumerLambda = new lambda.Function(
             this,
@@ -62,7 +66,8 @@ export class ContentModerationInfraStack extends cdk.Stack {
 
         topic.grantPublish(serverLambda);
 
-        table.grantReadWriteData(sqsConsumerLambda);
+        table.grantWriteData(sqsConsumerLambda);
+        table.grantReadData(serverLambda);
         queue.grantConsumeMessages(sqsConsumerLambda);
 
         sqsConsumerLambda.addEventSource(

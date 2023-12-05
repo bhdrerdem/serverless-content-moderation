@@ -74,6 +74,6 @@ func (db *dbService) GetItem(id string, out interface{}) error {
 		return err
 	}
 
-	err = attributevalue.UnmarshalMap(response.Item, &out)
+	err = attributevalue.UnmarshalMap(response.Item, out)
 	return err
 }

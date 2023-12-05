@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 
@@ -16,6 +17,7 @@ import (
 func main() {
 
 	shared.SnsService.Init()
+	shared.DBService.Init()
 
 	addr := ":3000"
 	mode := os.Getenv("GIN_MODE")
@@ -31,15 +33,13 @@ func setupRouter() *gin.Engine {
 
 	router := gin.New()
 
-	router.POST("/", handler)
-	router.GET("/health", func(ctx *gin.Context) {
-		ctx.Status(http.StatusOK)
-	})
+	router.POST("/content", publishContent)
+	router.GET("/content/:id", getContent)
 
 	return router
 }
 
-func handler(ctx *gin.Context) {
+func publishContent(ctx *gin.Context) {
 
 	content := &types.Content{}
 
@@ -75,4 +75,24 @@ func handler(ctx *gin.Context) {
 		"message": "Message processing...",
 		"id":      content.ID,
 	})
+}
+
+func getContent(ctx *gin.Context) {
+
+	contentID := ctx.Param("id")
+	content := &types.Content{}
+
+	err := shared.DBService.GetItem(contentID, content)
+	if err != nil {
+		log.Error().Err(err).Str("id", contentID).Msg("Failed to get content")
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get content."})
+		return
+	}
+
+	if content.ID == "" {
+		ctx.JSON(http.StatusNotFound, gin.H{"message": fmt.Sprintf("Content with id %s not found.", contentID)})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, content)
 }
