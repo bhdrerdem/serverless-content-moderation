@@ -5,18 +5,18 @@ import (
 	"os"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/rs/zerolog/log"
 )
 
 var DBService dbService
 
 type dbService struct {
 	client    *dynamodb.Client
-	tableName *string
+	tableName string
 }
 
 const databaseDefaultTimeout = 30 * time.Second
@@ -28,7 +28,7 @@ func (db *dbService) Init() {
 		panic("table name is empty")
 	}
 
-	DBService.tableName = &tableName
+	DBService.tableName = tableName
 
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
@@ -40,15 +40,16 @@ func (db *dbService) Init() {
 
 func (db *dbService) PutItem(input interface{}) error {
 
-	item, err := attributevalue.MarshalMap(input)
+	item, err := attributevalue.MarshalMapWithOptions(input, func(eo *attributevalue.EncoderOptions) {
+		eo.TagKey = "json"
+	})
 	if err != nil {
-		log.Error().Err(err).Interface("input", input).Msg("Failed to unmarshal ddb map")
 		return err
 	}
 
 	putItemInput := &dynamodb.PutItemInput{
 		Item:      item,
-		TableName: db.tableName,
+		TableName: aws.String(db.tableName),
 	}
 
 	ctx, cancelFn := context.WithTimeout(context.TODO(), databaseDefaultTimeout)
@@ -61,9 +62,9 @@ func (db *dbService) GetItem(id string, out interface{}) error {
 
 	getItemInput := &dynamodb.GetItemInput{
 		Key: map[string]types.AttributeValue{
-			"ID": &types.AttributeValueMemberS{Value: id},
+			"id": &types.AttributeValueMemberS{Value: id},
 		},
-		TableName: db.tableName,
+		TableName: aws.String(db.tableName),
 	}
 
 	ctx, cancelFn := context.WithTimeout(context.TODO(), databaseDefaultTimeout)
